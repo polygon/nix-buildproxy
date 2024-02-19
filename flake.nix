@@ -10,12 +10,16 @@
   in
   {
     packages.${system} = {
-      test = pkgs.callPackage ./test.nix { inherit self; };
+      test-buildproxy = pkgs.callPackage ./nix-buildproxy/buildproxy.nix { inherit self; proxy_content = (import ./example/proxy_content.nix); };
+      test = pkgs.callPackage ./example/test.nix { inherit self; buildproxy = self.packages.${system}.test-buildproxy; };
+      proxy-capture = pkgs.callPackage ./nix-buildproxy/proxy-capture.nix { inherit self; };
+      buildproxy = pkgs.callPackage ./nix-buildproxy/buildproxy.nix { inherit self; };
     };
 
     devShells.${system}.default = with pkgs; mkShell {
       buildInputs = [
-        mitmproxy
+        self.packages.${system}.proxy-capture
+        self.packages.${system}.test-buildproxy
       ];
     };
   };
