@@ -1,7 +1,7 @@
-{ self, writeShellScriptBin, mitmproxy }:
-writeShellScriptBin "proxy-capture"
+{ self, writeShellScriptBin, mitmproxy, nix, nixfmt }:
+writeShellScriptBin "buildproxy-capture"
 ''
-${mitmproxy}/bin/mitmdump -s ${self}/nix-buildproxy/build_cache.py > /dev/null &
+PATH=${nix}/bin:${nixfmt}/bin:$PATH ${mitmproxy}/bin/mitmdump -s ${self}/nix-buildproxy/build_cache.py > /dev/null &
 MITM_PID=$!
 echo "Entering proxy capture shell, run your build now, exit shell when done"
 HTTP_PROXY=http://localhost:8080 HTTPS_PROXY=http://localhost:8080 $SHELL

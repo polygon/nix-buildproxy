@@ -1,12 +1,8 @@
-import sys
 import subprocess
-from typing import BinaryIO
 from io import StringIO
-from dataclasses import dataclass
 import json
 
 from mitmproxy import http
-from mitmproxy import io
 
 
 class BuildCache:
@@ -16,7 +12,7 @@ class BuildCache:
 
     def response(self, flow: http.HTTPFlow) -> None:
         print(f"URL: {flow.request.url}")
-        result = subprocess.run(["nix", "hash", "file", "/dev/stdin"], capture_output=True, input=flow.response.content)
+        result = subprocess.run(["nix", "--extra-experimental-features", "nix-command", "hash", "file", "/dev/stdin"], capture_output=True, input=flow.response.content)
         nix_hash = result.stdout.decode('utf-8').strip()
         print(f"Hash: {nix_hash}")
         self.files.append({"url": flow.request.url, "hash": nix_hash})
