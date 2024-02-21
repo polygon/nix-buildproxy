@@ -14,7 +14,7 @@ A quick example on how this package works with the included `example/evil_build.
 
 ### Overlay
 
-The flake provides an overlay that will make the `buildproxy-capture` package available as well as extend `lib` to contain `lib.mkBuildproxy`. It is recommended to use this overlay. For example, when importing `nixpkgs` in a flake, the overlay could be added as follows:
+The flake provides an overlay that will make the `buildproxy-capture` package available as well as extend `lib` to contain `lib.mkBuildproxy`. It is recommended to use this overlay. For example, when importing `nixpkgs` in a flake, the overlay is applied as follows:
 
 ```nix
 {
@@ -39,9 +39,9 @@ The flake provides an overlay that will make the `buildproxy-capture` package av
 
 ### Capturing requests
 
-Before starting to bring in `nix-buildproxy`, you should be able to build your project in a devShell environment and downloads during the build are preventing a proper sandboxed nix build. In your development environment, run `buildproxy-capture` by either adding the `buildproxy-capture` program to your environment or also directly through `nix run github:polygon/nix-buildproxy#buildproxy-capture`. This will launch `mitmproxy` and a subshell that has `HTTPS_PROXY` and `HTTP_PROXY` set. This is fine for CMake, since it respects these variables and does not check certificates. Other build systems might require more convincing.
+Before starting to bring in `nix-buildproxy`, you should be able to build your project (e.g. in a devShell) and downloads during the build are preventing a proper sandboxed nix build. Run `buildproxy-capture` by either adding the `buildproxy-capture` program to your environment or directly through `nix run github:polygon/nix-buildproxy#buildproxy-capture`. This will launch `mitmproxy` and a subshell that has `HTTPS_PROXY` and `HTTP_PROXY` set. This is fine for CMake, since it respects these variables and does not check certificates. Other build systems might require more convincing.
 
-You can then run your build and exit the subshell when done. This will generate a `proxy_content.nix` file with all the requests.
+Then, run your build and exit the subshell when done. This will generate a `proxy_content.nix` file with all the requests.
 
 <details>
 <summary>Here is how the session might look like:</summary>
@@ -79,7 +79,7 @@ nixbrett ➜ nix/nix-buildproxy/example (main ✗) cat proxy_content.nix
 </details>
 
 ### Replaying responses
-In order to reply to responses, you need to create a buildproxy recipe that serves your `proxy_content.nix`. You can use the `lib.mkBuildproxy <path-to-proxy_content.nix>` helper function of this flake for this. To enable the buildproxy in your build, you should run `source ${buildproxy}` in a stage in your build before any downloads are being attempted. This will start `mitmproxy` in replay mode and set the `HTTP_PROXY` and `HTTPS_PROXY` variables. A basic scaffold might look like so:
+In order to reply to responses, you need to create a buildproxy recipe that serves your `proxy_content.nix`. You can use `lib.mkBuildproxy <path-to-proxy_content.nix>` for this. To enable the buildproxy in your build, run `source ${buildproxy}` early in your build (before any downloads are attempted, `prePatch` is a good candidate). This will start `mitmproxy` in replay mode and set the `HTTP_PROXY` and `HTTPS_PROXY` variables. A basic scaffold:
 
 ```nix
 { stdenv, lib, ... }:
@@ -97,11 +97,11 @@ stdenv.mkDerivation {
 
 ## How it works
 
-This package uses [mitmproxy](https://mitmproxy.org/) as the core proxy under the hood. Python addons are used to intercept requests and will either create the proxy content library or serve it. Building the proxy content library works as follows:
+`nix-buildproxy` uses [mitmproxy](https://mitmproxy.org/) under the hood to do the heavy lifting of providing local proxy functionality. Python addons are used to intercept requests and will either create the proxy content library or serve it. Building the proxy content library works as follows:
 
 ```mermaid
 sequenceDiagram
-    participant client
+    participant clientas the core 
     participant mitmproxy
     participant upstream
     participant inventory
@@ -129,12 +129,14 @@ sequenceDiagram
 
 This package was originally built for and works out of the box with CMake. CMake respects the `HTTP_PROXY/HTTPS_PROXY` environment variables and by default ignores certificate errors. If you are using a different tool, you need to figure out how to configure the proxy server and how to tell the tool to accept the self-signed certificate of `mitmproxy`.
 
-HTTP redirects are currently not properly handled. The resulting `proxy_content.nix` will contain the original request with a hash for an empty response and the redirected request with the actual has separately. You can fix this issue by copying the final `sha256` to the entry that redirects to it. This will be properly addressed in a future update.
+`mitmproxy` will load responses full into memory, I have not yet found out if streaming from/to disk is possible. If this is being used to serve large files, expect RAM usage of at least the file size, possibly several times that.
+
+HTTP redirects are currently not properly handled. The resulting `proxy_content.nix` will contain the original request with a hash for an empty response and the redirected request with the actual hash separately. You can fix this issue by copying the final `sha256` to the entry that redirects to it. This will be properly addressed in a future update.
 
 You can modify `proxy_content.nix` to deliver different files. To make builds more stable, it is recommended to replace requests to, e.g., the moving `main` branch of a project to a concrete commit hash. Otherwise, future builds might experience checksum failures. This can also be used as an effective patching mechanism but there is currently no support built in.
 
 ## Open issues / Roadmap
 
-* Properly handle HTTP redirects: Undecided whether to replay the redirect or whether to deliver the resulting file immediately, the latter breaking in case the client modifies the request
-* Properly handle non-success HTTP status codes in general
-* Add framework for patching of downloaded files
+* [ ] Properly handle HTTP redirects: Undecided whether to replay the redirect or whether to deliver the resulting file immediately, the latter breaking in case the client modifies the request
+* [ ] Properly handle non-success HTTP status codes in general
+* [ ] Add framework for patching of downloaded files
