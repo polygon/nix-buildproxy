@@ -101,7 +101,7 @@ stdenv.mkDerivation {
 
 ```mermaid
 sequenceDiagram
-    participant clientas the core 
+    participant client
     participant mitmproxy
     participant upstream
     participant inventory
@@ -139,4 +139,4 @@ You can modify `proxy_content.nix` to deliver different files. To make builds mo
 
 * [ ] Properly handle HTTP redirects: Undecided whether to replay the redirect or whether to deliver the resulting file immediately, the latter breaking in case the client modifies the request
 * [ ] Properly handle non-success HTTP status codes in general
-* [ ] Add framework for patching of downloaded files
+* [ ] Framework for patching of downloaded files
