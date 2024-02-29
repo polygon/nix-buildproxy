@@ -14,10 +14,12 @@ class ProxyResponder:
         print(f"URI requested: {flow.request.url}")
         for obj in self.proxy_content:
             if obj['url'] == flow.request.url:
-                print(f"Object found, delivering: {obj['file']}")
+                print(f"Object found, delivering: {obj['status_code']} : {obj['file']}")
+                headers = [(k.encode('utf-8'), v.encode('utf-8')) for k, v in obj['headers'].items()]
                 flow.response = http.Response.make(
-                    200,
-                    open(obj['file'], 'rb').read(),
+                    status_code = obj['status_code'],
+                    headers = headers,
+                    content = open(obj['file'], 'rb').read() if obj['file'] is not None else b'',
                 )
                 break
         else:
